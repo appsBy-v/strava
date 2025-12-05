@@ -90,6 +90,10 @@ input[type=range] {
   background:#007BFF;
   color:white;
 }
+
+.individual-play {
+  min-width:40px;
+}
 </style>
 </head>
 
@@ -117,12 +121,14 @@ input[type=range] {
   <div class="route">
     <span id="name1" class="route-name" style="color:blue;"></span>
     <input type="range" id="slider1" min="0" value="0">
+    <button id="play1" class="individual-play">▶</button>
   </div>
   <div class="chart-container"><canvas id="chart1"></canvas></div>
 
   <div class="route">
     <span id="name2" class="route-name" style="color:red;"></span>
     <input type="range" id="slider2" min="0" value="0">
+    <button id="play2" class="individual-play">▶</button>
   </div>
   <div class="chart-container"><canvas id="chart2"></canvas></div>
 </div>
@@ -180,6 +186,7 @@ let coords1 = [], coords2 = [], elev1 = [], elev2 = [], time1 = [], time2 = [];
 let marker1 = null, marker2 = null, c1 = null, c2 = null;
 let speedMult = 1;
 let playing = false, timer = null;
+let playing1 = false, playing2 = false, timer1 = null, timer2 = null;
 let map = null;
 
 // ---------------------- MAIN LOAD -----------------------
@@ -453,4 +460,3 @@ function startPlayback() {
 
 </body>
 </html>
-
