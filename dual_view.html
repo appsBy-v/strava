@@ -387,6 +387,7 @@ function setupSliders() {
   };
 
   setupPlayback();
+  setupIndividualPlayback();
 }
 
 // ---------------------- PLAYBACK -----------------------
@@ -399,6 +400,18 @@ function setupPlayback() {
       playBtn.textContent = "▶ Play Both";
       clearInterval(timer);
     } else {
+      // Stop individual playbacks
+      if (playing1) {
+        playing1 = false;
+        clearInterval(timer1);
+        document.getElementById("play1").textContent = "▶";
+      }
+      if (playing2) {
+        playing2 = false;
+        clearInterval(timer2);
+        document.getElementById("play2").textContent = "▶";
+      }
+      
       playing = true;
       playBtn.textContent = "⏸ Pause Both";
       startPlayback();
@@ -414,6 +427,14 @@ function setupPlayback() {
       if (playing) {
         clearInterval(timer);
         startPlayback();
+      }
+      if (playing1) {
+        clearInterval(timer1);
+        startIndividualPlayback(1);
+      }
+      if (playing2) {
+        clearInterval(timer2);
+        startIndividualPlayback(2);
       }
     };
   });
@@ -455,6 +476,87 @@ function startPlayback() {
     }
 
   }, 100 / speedMult);
+}
+
+// ---------------------- INDIVIDUAL PLAYBACK -----------------------
+function setupIndividualPlayback() {
+  const play1Btn = document.getElementById("play1");
+  const play2Btn = document.getElementById("play2");
+
+  console.log("Setting up individual playback, buttons:", play1Btn, play2Btn);
+
+  play1Btn.onclick = () => {
+    console.log("Play1 clicked, playing1:", playing1);
+    if (playing1) {
+      playing1 = false;
+      play1Btn.textContent = "▶";
+      clearInterval(timer1);
+    } else {
+      // Stop "Play Both" if active
+      if (playing) {
+        playing = false;
+        clearInterval(timer);
+        document.getElementById("playBoth").textContent = "▶ Play Both";
+      }
+      
+      playing1 = true;
+      play1Btn.textContent = "⏸";
+      startIndividualPlayback(1);
+    }
+  };
+
+  play2Btn.onclick = () => {
+    console.log("Play2 clicked, playing2:", playing2);
+    if (playing2) {
+      playing2 = false;
+      play2Btn.textContent = "▶";
+      clearInterval(timer2);
+    } else {
+      // Stop "Play Both" if active
+      if (playing) {
+        playing = false;
+        clearInterval(timer);
+        document.getElementById("playBoth").textContent = "▶ Play Both";
+      }
+      
+      playing2 = true;
+      play2Btn.textContent = "⏸";
+      startIndividualPlayback(2);
+    }
+  };
+}
+
+function startIndividualPlayback(routeNum) {
+  const slider = document.getElementById(`slider${routeNum}`);
+  const coords = routeNum === 1 ? coords1 : coords2;
+  const marker = routeNum === 1 ? marker1 : marker2;
+  const chart = routeNum === 1 ? c1 : c2;
+  const playBtn = document.getElementById(`play${routeNum}`);
+  
+  const timerVar = setInterval(() => {
+    let i = +slider.value;
+    
+    if (i < coords.length - 1) {
+      i++;
+      slider.value = i;
+      marker.setLatLng(coords[i]);
+      updateCursor(chart, i);
+    } else {
+      clearInterval(timerVar);
+      if (routeNum === 1) {
+        playing1 = false;
+      } else {
+        playing2 = false;
+      }
+      playBtn.textContent = "▶";
+    }
+  }, 100 / speedMult);
+  
+  if (routeNum === 1) {
+    timer1 = timerVar;
+  } else {
+    timer2 = timerVar;
+  }
 }
 </script>
 
