@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer</title>
+<title>GPX Comparison Viewer2</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -267,6 +267,56 @@ function setupCharts() {
 
 function makeChart(id, elev, time, color, ymin, ymax) {
   const ctx = document.getElementById(id).getContext('2d');
+  
+  const persistentMarker = {
+    id: 'persistentMarker',
+    currentIndex: 0,
+    afterDatasetsDraw(chart) {
+      const {ctx, chartArea: {top, bottom}, scales: {x, y}} = chart;
+      const idx = this.currentIndex;
+      
+      if (idx >= 0 && idx < elev.length) {
+        const xPos = x.getPixelForValue(idx);
+        const yPos = y.getPixelForValue(elev[idx]);
+        
+        // Draw vertical line
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(xPos, top);
+        ctx.lineTo(xPos, bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Draw circle at point
+        ctx.fillStyle = color;
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(xPos, yPos, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw label box
+        const label = `${elev[idx].toFixed(0)} ft | ${time[idx]}`;
+        ctx.font = '12px sans-serif';
+        const textWidth = ctx.measureText(label).width;
+        const boxX = xPos + 10;
+        const boxY = yPos - 20;
+        const padding = 4;
+        
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillRect(boxX, boxY, textWidth + padding * 2, 20);
+        ctx.fillStyle = 'white';
+        ctx.fillText(label, boxX + padding, boxY + 14);
+        
+        ctx.restore();
+      }
+    }
+  };
+  
   return new Chart(ctx, {
     type: 'line',
     data: {
@@ -299,13 +349,13 @@ function makeChart(id, elev, time, color, ymin, ymax) {
         x:{display:false},
         y:{min:ymin, max:ymax, ticks:{callback:v=>v.toFixed(0)}}
       }
-    }
+    },
+    plugins: [persistentMarker]
   });
 }
 
 function updateCursor(chart, idx){
-  chart.setActiveElements([{datasetIndex:0, index:idx}]);
-  chart.tooltip.setActiveElements([{datasetIndex:0, index:idx}], {x: 0, y: 0});
+  chart.config.plugins[0].currentIndex = idx;
   chart.update();
 }
 
