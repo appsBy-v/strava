@@ -170,15 +170,16 @@ function parseGPX(text) {
 
     const tNode = n.getElementsByTagName("time")[0];
     let time = "";
+    let timestamp = null;
     if (tNode && tNode.textContent) {
-      let dt = new Date(tNode.textContent);
-      if (!isNaN(dt)) {
-        dt = new Date(dt.getTime() - 8 * 3600 * 1000);
+      timestamp = new Date(tNode.textContent);
+      if (!isNaN(timestamp)) {
+        let dt = new Date(timestamp.getTime() - 8 * 3600 * 1000);
         time = dt.toLocaleTimeString();
       }
     }
 
-    pts.push({ lat, lon, ele, time });
+    pts.push({ lat, lon, ele, time, timestamp });
   }
   return pts;
 }
@@ -194,12 +195,12 @@ function bounds(arr) {
 
 // --------------- GLOBALS -----------------
 let coords1 = [], coords2 = [], elev1 = [], elev2 = [], time1 = [], time2 = [];
+let timestamps1 = [], timestamps2 = []; // Raw Date objects
 let marker1 = null, marker2 = null, c1 = null, c2 = null;
 let speedMult = 1;
 let playing = false, timer = null;
 let playing1 = false, playing2 = false, timer1 = null, timer2 = null;
-let stopwatch1Time = 0, stopwatch2Time = 0;
-let stopwatchTimer1 = null, stopwatchTimer2 = null;
+let stopwatch1Start = 0, stopwatch2Start = 0;
 let map = null;
 
 // ---------------------- MAIN LOAD -----------------------
@@ -226,6 +227,8 @@ loadBtn.onclick = async () => {
   elev2 = g2.map(p => p.ele);
   time1 = g1.map(p => p.time);
   time2 = g2.map(p => p.time);
+  timestamps1 = g1.map(p => p.timestamp);
+  timestamps2 = g2.map(p => p.timestamp);
 
   document.getElementById("name1").textContent = f1.name;
   document.getElementById("name2").textContent = f2.name;
@@ -391,12 +394,18 @@ function setupSliders() {
     const i = +s1.value;
     marker1.setLatLng(coords1[i]);
     updateCursor(c1, i);
+    if (!playing1) {
+      updateStopwatchDisplay(1, i);
+    }
   };
 
   s2.oninput = () => {
     const i = +s2.value;
     marker2.setLatLng(coords2[i]);
     updateCursor(c2, i);
+    if (!playing2) {
+      updateStopwatchDisplay(2, i);
+    }
   };
 
   setupPlayback();
@@ -443,14 +452,10 @@ function setupPlayback() {
       }
       if (playing1) {
         clearInterval(timer1);
-        stopStopwatch(1);
-        startStopwatch(1);
         startIndividualPlayback(1);
       }
       if (playing2) {
         clearInterval(timer2);
-        stopStopwatch(2);
-        startStopwatch(2);
         startIndividualPlayback(2);
       }
     };
@@ -500,15 +505,11 @@ function setupIndividualPlayback() {
   const play1Btn = document.getElementById("play1");
   const play2Btn = document.getElementById("play2");
 
-  console.log("Setting up individual playback, buttons:", play1Btn, play2Btn);
-
   play1Btn.onclick = () => {
-    console.log("Play1 clicked, playing1:", playing1);
     if (playing1) {
       playing1 = false;
       play1Btn.textContent = "▶";
       clearInterval(timer1);
-      stopStopwatch(1);
     } else {
       // Stop "Play Both" if active
       if (playing) {
@@ -519,19 +520,17 @@ function setupIndividualPlayback() {
       
       playing1 = true;
       play1Btn.textContent = "⏸";
-      resetStopwatch(1);
-      startStopwatch(1);
+      const currentIndex = +document.getElementById("slider1").value;
+      stopwatch1Start = currentIndex;
       startIndividualPlayback(1);
     }
   };
 
   play2Btn.onclick = () => {
-    console.log("Play2 clicked, playing2:", playing2);
     if (playing2) {
       playing2 = false;
       play2Btn.textContent = "▶";
       clearInterval(timer2);
-      stopStopwatch(2);
     } else {
       // Stop "Play Both" if active
       if (playing) {
@@ -542,8 +541,8 @@ function setupIndividualPlayback() {
       
       playing2 = true;
       play2Btn.textContent = "⏸";
-      resetStopwatch(2);
-      startStopwatch(2);
+      const currentIndex = +document.getElementById("slider2").value;
+      stopwatch2Start = currentIndex;
       startIndividualPlayback(2);
     }
   };
@@ -564,14 +563,13 @@ function startIndividualPlayback(routeNum) {
       slider.value = i;
       marker.setLatLng(coords[i]);
       updateCursor(chart, i);
+      updateStopwatchDisplay(routeNum, i);
     } else {
       clearInterval(timerVar);
       if (routeNum === 1) {
         playing1 = false;
-        stopStopwatch(1);
       } else {
         playing2 = false;
-        stopStopwatch(2);
       }
       playBtn.textContent = "▶";
     }
@@ -592,53 +590,20 @@ function formatTime(milliseconds) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function updateStopwatchDisplay(routeNum) {
-  const time = routeNum === 1 ? stopwatch1Time : stopwatch2Time;
-  document.getElementById(`stopwatch${routeNum}`).textContent = formatTime(time);
-}
-
-function resetStopwatch(routeNum) {
-  if (routeNum === 1) {
-    stopwatch1Time = 0;
-    clearInterval(stopwatchTimer1);
-    stopwatchTimer1 = null;
-  } else {
-    stopwatch2Time = 0;
-    clearInterval(stopwatchTimer2);
-    stopwatchTimer2 = null;
-  }
-  updateStopwatchDisplay(routeNum);
-}
-
-function startStopwatch(routeNum) {
-  const startTime = Date.now();
-  const initialTime = routeNum === 1 ? stopwatch1Time : stopwatch2Time;
+function updateStopwatchDisplay(routeNum, currentIndex) {
+  const timestamps = routeNum === 1 ? timestamps1 : timestamps2;
+  const startIndex = routeNum === 1 ? stopwatch1Start : stopwatch2Start;
   
-  const timerVar = setInterval(() => {
-    const elapsed = Date.now() - startTime;
-    if (routeNum === 1) {
-      stopwatch1Time = initialTime + (elapsed * speedMult);
-    } else {
-      stopwatch2Time = initialTime + (elapsed * speedMult);
-    }
-    updateStopwatchDisplay(routeNum);
-  }, 100);
+  if (!timestamps[startIndex] || !timestamps[currentIndex]) {
+    document.getElementById(`stopwatch${routeNum}`).textContent = "00:00";
+    return;
+  }
   
-  if (routeNum === 1) {
-    stopwatchTimer1 = timerVar;
-  } else {
-    stopwatchTimer2 = timerVar;
-  }
-}
-
-function stopStopwatch(routeNum) {
-  if (routeNum === 1) {
-    clearInterval(stopwatchTimer1);
-    stopwatchTimer1 = null;
-  } else {
-    clearInterval(stopwatchTimer2);
-    stopwatchTimer2 = null;
-  }
+  const startTime = timestamps[startIndex].getTime();
+  const currentTime = timestamps[currentIndex].getTime();
+  const elapsed = currentTime - startTime;
+  
+  document.getElementById(`stopwatch${routeNum}`).textContent = formatTime(elapsed);
 }
 </script>
 
