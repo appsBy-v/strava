@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer</title>
+<title>GPX Comparison Viewer2</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -66,7 +66,7 @@ input[type=range] {
 </head>
 
 <body>
-
+test
 <!-- Upload UI -->
 <div id="topbar">
   <input type="file" id="file1" accept=".gpx">
@@ -101,251 +101,254 @@ input[type=range] {
 </div>
 
 <script>
-// ---------------------- FILE READING -----------------------
-function readFile(f) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = e => resolve(e.target.result);
-    r.onerror = reject;
-    r.readAsText(f);
-  });
-}
-
-// --------------------- GPX PARSER --------------------------
-function parseGPX(text) {
-  const xml = new DOMParser().parseFromString(text, "text/xml");
-  const pts = [];
-  const nodes = xml.getElementsByTagName("trkpt");
-
-  for (let n of nodes) {
-    let lat = parseFloat(n.getAttribute("lat"));
-    let lon = parseFloat(n.getAttribute("lon"));
-
-    let eleNode = n.getElementsByTagName("ele")[0];
-    let ele = eleNode ? parseFloat(eleNode.textContent) * 3.28084 : 0; // meters → feet
-
-    let tNode = n.getElementsByTagName("time")[0];
-    let time = "";
-    if (tNode) {
-      let dt = new Date(tNode.textContent);
-      dt = new Date(dt.getTime() - 8 * 3600 * 1000); // Pacific shift
-      time = dt.toLocaleTimeString();
-    }
-
-    pts.push({ lat, lon, ele, time });
-  }
-  return pts;
-}
-
-// --------------- MATH HELPERS -----------------
-function bounds(arr) {
-  if (!arr.length) return [0, 1];
-  let mn = Math.min(...arr);
-  let mx = Math.max(...arr);
-  let rg = mx - mn || 1;
-  return [mn - 0.05 * rg, mx + 0.05 * rg];
-}
-
-// --------------- GLOBALS after load -----------------
-let coords1, coords2, elev1, elev2, time1, time2;
-let marker1, marker2, c1, c2;
-let speedMult = 1;
-let playing = false, timer = null;
-
-// ---------------------- MAIN LOAD -----------------------
-document.getElementById("loadBtn").onclick = async () => {
-  const f1 = document.getElementById("file1").files[0];
-  const f2 = document.getElementById("file2").files[0];
-  if (!f1 || !f2) {
-    alert("Select both GPX files");
-    return;
+console.log("ONLOAD FIRING, MAP DIV EXISTS?", document.getElementById("map"));
+window.onload = () => {
+  // ---------------------- FILE READING -----------------------
+  function readFile(f) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = e => resolve(e.target.result);
+      r.onerror = reject;
+      r.readAsText(f);
+    });
   }
 
-  const g1 = parseGPX(await readFile(f1));
-  const g2 = parseGPX(await readFile(f2));
+  // --------------------- GPX PARSER --------------------------
+  function parseGPX(text) {
+    const xml = new DOMParser().parseFromString(text, "text/xml");
+    const pts = [];
+    const nodes = xml.getElementsByTagName("trkpt");
 
-  if (!g1.length || !g2.length) {
-    alert("One of the GPX files is empty or invalid");
-    return;
-  }
+    for (let n of nodes) {
+      let lat = parseFloat(n.getAttribute("lat"));
+      let lon = parseFloat(n.getAttribute("lon"));
 
-  coords1 = g1.map(p => [p.lat, p.lon]);
-  coords2 = g2.map(p => [p.lat, p.lon]);
-  elev1 = g1.map(p => p.ele);
-  elev2 = g2.map(p => p.ele);
-  time1 = g1.map(p => p.time);
-  time2 = g2.map(p => p.time);
+      let eleNode = n.getElementsByTagName("ele")[0];
+      let ele = eleNode ? parseFloat(eleNode.textContent) * 3.28084 : 0; // meters → feet
 
-  document.getElementById("name1").textContent = f1.name;
-  document.getElementById("name2").textContent = f2.name;
-
-  setupMap();
-  setupCharts();
-  setupSliders();
-
-  document.getElementById("controls").style.display = "block";
-};
-
-// ---------------------- MAP -----------------------
-function setupMap() {
-  // If map already exists, wipe it
-  if (window.map) map.remove();
-
-  window.map = L.map('map').setView(coords1[0], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
-
-  L.polyline(coords1, {color:'blue', weight:3}).addTo(map);
-  L.polyline(coords2, {color:'red', weight:3}).addTo(map);
-
-  marker1 = L.marker(coords1[0], {icon:makeIcon('blue')}).addTo(map);
-  marker2 = L.marker(coords2[0], {icon:makeIcon('red')}).addTo(map);
-}
-
-function makeIcon(color){
-  return L.icon({
-    iconUrl:"data:image/svg+xml;utf8,"+
-      `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'>
-         <circle cx='12' cy='12' r='8' fill='${color}' stroke='black' stroke-width='1'/>
-       </svg>`,
-    iconSize:[20,20],iconAnchor:[10,10]
-  });
-}
-
-// ---------------------- CHARTS -----------------------
-function setupCharts() {
-  const [y1mn, y1mx] = bounds(elev1);
-  const [y2mn, y2mx] = bounds(elev2);
-
-  c1 = makeChart("chart1", elev1, time1, "blue", y1mn, y1mx);
-  c2 = makeChart("chart2", elev2, time2, "red", y2mn, y2mx);
-}
-
-function makeChart(id, elev, time, color, ymin, ymax) {
-  return new Chart(document.getElementById(id).getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: elev.map((_,i)=>i),
-      datasets: [{
-        label:'Elevation (ft)',
-        data:elev,
-        borderColor:color,
-        borderWidth:2,
-        fill:false,
-        pointRadius:0
-      }]
-    },
-    options:{
-      animation:false,
-      maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          callbacks:{
-            title:()=>null,
-            label:c=>`Elevation: ${c.formattedValue} ft | Time: ${time[c.dataIndex]}`
-          }
-        }
-      },
-      scales:{
-        x:{display:false},
-        y:{min:ymin, max:ymax, ticks:{callback:v=>v.toFixed(0)}}
+      let tNode = n.getElementsByTagName("time")[0];
+      let time = "";
+      if (tNode) {
+        let dt = new Date(tNode.textContent);
+        dt = new Date(dt.getTime() - 8 * 3600 * 1000); // Pacific shift
+        time = dt.toLocaleTimeString();
       }
+
+      pts.push({ lat, lon, ele, time });
     }
-  });
-}
+    return pts;
+  }
 
-function updateCursor(chart, idx){
-  chart.setActiveElements([{datasetIndex:0, index:idx}]);
-  chart.tooltip.setActiveElements([{datasetIndex:0, index:idx}]);
-  chart.update();
-}
+  // --------------- MATH HELPERS -----------------
+  function bounds(arr) {
+    if (!arr.length) return [0, 1];
+    let mn = Math.min(...arr);
+    let mx = Math.max(...arr);
+    let rg = mx - mn || 1;
+    return [mn - 0.05 * rg, mx + 0.05 * rg];
+  }
 
-// ---------------------- SLIDERS -----------------------
-function setupSliders() {
-  const s1 = document.getElementById("slider1");
-  const s2 = document.getElementById("slider2");
+  // --------------- GLOBALS after load -----------------
+  let coords1, coords2, elev1, elev2, time1, time2;
+  let marker1, marker2, c1, c2;
+  let speedMult = 1;
+  let playing = false, timer = null;
 
-  s1.max = coords1.length - 1;
-  s2.max = coords2.length - 1;
-
-  s1.oninput = () => {
-    let i = +s1.value;
-    marker1.setLatLng(coords1[i]);
-    updateCursor(c1, i);
-  };
-
-  s2.oninput = () => {
-    let i = +s2.value;
-    marker2.setLatLng(coords2[i]);
-    updateCursor(c2, i);
-  };
-
-  setupPlayback();
-}
-
-// ---------------------- PLAYBACK -----------------------
-function setupPlayback() {
-  const playBtn = document.getElementById("playBoth");
-
-  playBtn.onclick = () => {
-    if (playing) {
-      playing = false;
-      playBtn.textContent = "▶ Play Both";
-      clearInterval(timer);
-    } else {
-      playing = true;
-      playBtn.textContent = "⏸ Pause Both";
-      startPlayback();
+  // ---------------------- MAIN LOAD -----------------------
+  document.getElementById("loadBtn").onclick = async () => {
+    const f1 = document.getElementById("file1").files[0];
+    const f2 = document.getElementById("file2").files[0];
+    if (!f1 || !f2) {
+      alert("Select both GPX files");
+      return;
     }
+
+    const g1 = parseGPX(await readFile(f1));
+    const g2 = parseGPX(await readFile(f2));
+
+    if (!g1.length || !g2.length) {
+      alert("One of the GPX files is empty or invalid");
+      return;
+    }
+
+    coords1 = g1.map(p => [p.lat, p.lon]);
+    coords2 = g2.map(p => [p.lat, p.lon]);
+    elev1 = g1.map(p => p.ele);
+    elev2 = g2.map(p => p.ele);
+    time1 = g1.map(p => p.time);
+    time2 = g2.map(p => p.time);
+
+    document.getElementById("name1").textContent = f1.name;
+    document.getElementById("name2").textContent = f2.name;
+
+    setupMap();
+    setupCharts();
+    setupSliders();
+
+    document.getElementById("controls").style.display = "block";
   };
 
-  document.querySelectorAll('.speed').forEach(b => {
-    b.onclick = () => {
-      document.querySelectorAll('.speed').forEach(x => x.classList.remove("active-speed"));
-      b.classList.add("active-speed");
-      speedMult = parseFloat(b.dataset.speed);
+  // ---------------------- MAP -----------------------
+  function setupMap() {
+    // If map already exists, wipe it
+    if (window.map) map.remove();
 
+    window.map = L.map('map').setView(coords1[0], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+
+    L.polyline(coords1, {color:'blue', weight:3}).addTo(map);
+    L.polyline(coords2, {color:'red', weight:3}).addTo(map);
+
+    marker1 = L.marker(coords1[0], {icon:makeIcon('blue')}).addTo(map);
+    marker2 = L.marker(coords2[0], {icon:makeIcon('red')}).addTo(map);
+  }
+
+  function makeIcon(color){
+    return L.icon({
+      iconUrl:"data:image/svg+xml;utf8,"+
+        `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'>
+          <circle cx='12' cy='12' r='8' fill='${color}' stroke='black' stroke-width='1'/>
+        </svg>`,
+      iconSize:[20,20],iconAnchor:[10,10]
+    });
+  }
+
+  // ---------------------- CHARTS -----------------------
+  function setupCharts() {
+    const [y1mn, y1mx] = bounds(elev1);
+    const [y2mn, y2mx] = bounds(elev2);
+
+    c1 = makeChart("chart1", elev1, time1, "blue", y1mn, y1mx);
+    c2 = makeChart("chart2", elev2, time2, "red", y2mn, y2mx);
+  }
+
+  function makeChart(id, elev, time, color, ymin, ymax) {
+    return new Chart(document.getElementById(id).getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: elev.map((_,i)=>i),
+        datasets: [{
+          label:'Elevation (ft)',
+          data:elev,
+          borderColor:color,
+          borderWidth:2,
+          fill:false,
+          pointRadius:0
+        }]
+      },
+      options:{
+        animation:false,
+        maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:()=>null,
+              label:c=>`Elevation: ${c.formattedValue} ft | Time: ${time[c.dataIndex]}`
+            }
+          }
+        },
+        scales:{
+          x:{display:false},
+          y:{min:ymin, max:ymax, ticks:{callback:v=>v.toFixed(0)}}
+        }
+      }
+    });
+  }
+
+  function updateCursor(chart, idx){
+    chart.setActiveElements([{datasetIndex:0, index:idx}]);
+    chart.tooltip.setActiveElements([{datasetIndex:0, index:idx}]);
+    chart.update();
+  }
+
+  // ---------------------- SLIDERS -----------------------
+  function setupSliders() {
+    const s1 = document.getElementById("slider1");
+    const s2 = document.getElementById("slider2");
+
+    s1.max = coords1.length - 1;
+    s2.max = coords2.length - 1;
+
+    s1.oninput = () => {
+      let i = +s1.value;
+      marker1.setLatLng(coords1[i]);
+      updateCursor(c1, i);
+    };
+
+    s2.oninput = () => {
+      let i = +s2.value;
+      marker2.setLatLng(coords2[i]);
+      updateCursor(c2, i);
+    };
+
+    setupPlayback();
+  }
+
+  // ---------------------- PLAYBACK -----------------------
+  function setupPlayback() {
+    const playBtn = document.getElementById("playBoth");
+
+    playBtn.onclick = () => {
       if (playing) {
+        playing = false;
+        playBtn.textContent = "▶ Play Both";
         clearInterval(timer);
+      } else {
+        playing = true;
+        playBtn.textContent = "⏸ Pause Both";
         startPlayback();
       }
     };
-  });
-}
 
-function startPlayback() {
-  const s1 = document.getElementById("slider1");
-  const s2 = document.getElementById("slider2");
-  const playBtn = document.getElementById("playBoth");
+    document.querySelectorAll('.speed').forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll('.speed').forEach(x => x.classList.remove("active-speed"));
+        b.classList.add("active-speed");
+        speedMult = parseFloat(b.dataset.speed);
 
-  timer = setInterval(() => {
-    let i1 = +s1.value;
-    let i2 = +s2.value;
+        if (playing) {
+          clearInterval(timer);
+          startPlayback();
+        }
+      };
+    });
+  }
 
-    let done1 = false, done2 = false;
+  function startPlayback() {
+    const s1 = document.getElementById("slider1");
+    const s2 = document.getElementById("slider2");
+    const playBtn = document.getElementById("playBoth");
 
-    if (i1 < coords1.length - 1) {
-      i1++;
-      s1.value = i1;
-      marker1.setLatLng(coords1[i1]);
-      updateCursor(c1, i1);
-    } else done1 = true;
+    timer = setInterval(() => {
+      let i1 = +s1.value;
+      let i2 = +s2.value;
 
-    if (i2 < coords2.length - 1) {
-      i2++;
-      s2.value = i2;
-      marker2.setLatLng(coords2[i2]);
-      updateCursor(c2, i2);
-    } else done2 = true;
+      let done1 = false, done2 = false;
 
-    if (done1 && done2) {
-      clearInterval(timer);
-      playing = false;
-      playBtn.textContent = "▶ Play Both";
-    }
+      if (i1 < coords1.length - 1) {
+        i1++;
+        s1.value = i1;
+        marker1.setLatLng(coords1[i1]);
+        updateCursor(c1, i1);
+      } else done1 = true;
 
-  }, 100 / speedMult);
-}
+      if (i2 < coords2.length - 1) {
+        i2++;
+        s2.value = i2;
+        marker2.setLatLng(coords2[i2]);
+        updateCursor(c2, i2);
+      } else done2 = true;
+
+      if (done1 && done2) {
+        clearInterval(timer);
+        playing = false;
+        playBtn.textContent = "▶ Play Both";
+      }
+
+    }, 100 / speedMult);
+  }
+};
 </script>
 
 </body>
