@@ -286,6 +286,9 @@ function makeChart(id, elev, time, color, ymin, ymax) {
       plugins:{
         legend:{display:false},
         tooltip:{
+          enabled: true,
+          mode: 'index',
+          intersect: false,
           callbacks:{
             title:()=>null,
             label:c=>`Elevation: ${c.formattedValue} ft | Time: ${time[c.dataIndex]}`
@@ -302,7 +305,7 @@ function makeChart(id, elev, time, color, ymin, ymax) {
 
 function updateCursor(chart, idx){
   chart.setActiveElements([{datasetIndex:0, index:idx}]);
-  chart.tooltip.setActiveElements([{datasetIndex:0, index:idx}]);
+  chart.tooltip.setActiveElements([{datasetIndex:0, index:idx}], {x: 0, y: 0});
   chart.update();
 }
 
@@ -400,4 +403,3 @@ function startPlayback() {
 
 </body>
 </html>
-
