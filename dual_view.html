@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer1</title>
+<title>GPX Comparison Viewer2</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -232,23 +232,26 @@ window.addEventListener("load", function() {
 
     document.getElementById("controls").style.display = "block";
   };
-
   
   // ---------------------- MAP -----------------------
   function setupMap() {
+      // Remove existing map if present
       if (window.map) {
           window.map.remove();
-      }
-  
-      const mapDiv = document.getElementById("map");
-      if (!mapDiv) {
-          alert("Map container #map not found in DOM");
-          return;
+          window.map = null;
       }
   
       // Give browser time to render the map container properly
       setTimeout(() => {
-          window.map = L.map(mapDiv).setView(coords1[0], 13);
+          const mapDiv = document.getElementById("map");
+          if (!mapDiv) {
+              alert("Map container #map not found in DOM");
+              console.error("Map div not found!");
+              return;
+          }
+          
+          console.log("Map div found, creating map...");
+          window.map = L.map('map').setView(coords1[0], 13);
   
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom:19
@@ -423,6 +426,7 @@ window.addEventListener("load", function() {
 
 </body>
 </html>
+
 
 
 
