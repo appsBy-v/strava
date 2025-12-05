@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer4</title>
+<title>GPX Comparison Viewer5</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -233,13 +233,8 @@ window.addEventListener("load", function() {
     document.getElementById("controls").style.display = "block";
   };
   
-   // ---------------------- MAP -----------------------
+  // ---------------------- MAP -----------------------
   function setupMap() {
-      console.log("setupMap called");
-      console.log("All divs with id:", document.querySelectorAll('[id]'));
-      console.log("Map div by ID:", document.getElementById("map"));
-      console.log("Map div by querySelector:", document.querySelector("#map"));
-      
       // Remove existing map if present
       if (window.map) {
           window.map.remove();
@@ -249,17 +244,11 @@ window.addEventListener("load", function() {
       // Give browser time to render the map container properly
       setTimeout(() => {
           const mapDiv = document.getElementById("map");
-          console.log("Inside setTimeout - map div:", mapDiv);
           
           if (!mapDiv) {
               alert("Map container #map not found in DOM");
-              console.error("Map div not found!");
-              console.error("Body HTML:", document.body.innerHTML.substring(0, 500));
               return;
           }
-          
-          console.log("Map div found, creating map...");
-          console.log("Map div dimensions:", mapDiv.offsetWidth, mapDiv.offsetHeight);
           
           window.map = L.map('map').setView(coords1[0], 13);
   
@@ -436,6 +425,7 @@ window.addEventListener("load", function() {
 
 </body>
 </html>
+
 
 
 
