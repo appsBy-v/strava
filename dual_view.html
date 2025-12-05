@@ -303,17 +303,37 @@ loadBtn.onclick = async () => {
 };
 
 // ---------------------- HELP MODAL -----------------------
-document.getElementById("helpBtn").onclick = () => {
-  document.getElementById("helpModal").style.display = "block";
+const helpBtn = document.getElementById("helpBtn");
+const helpModal = document.getElementById("helpModal");
+const closeHelp = document.getElementById("closeHelp");
+const helpOverlay = document.getElementById("helpOverlay");
+
+helpBtn.onclick = () => {
+  helpModal.style.display = "block";
 };
 
-document.getElementById("closeHelp").onclick = () => {
-  document.getElementById("helpModal").style.display = "none";
+closeHelp.onclick = () => {
+  helpModal.style.display = "none";
 };
 
-document.getElementById("helpOverlay").onclick = () => {
-  document.getElementById("helpModal").style.display = "none";
+helpOverlay.onclick = () => {
+  helpModal.style.display = "none";
 };
+
+// ---------------------- HELP MODAL -----------------------
+function setupHelpModal() {
+  document.getElementById("helpBtn").onclick = () => {
+    document.getElementById("helpModal").style.display = "block";
+  };
+
+  document.getElementById("closeHelp").onclick = () => {
+    document.getElementById("helpModal").style.display = "none";
+  };
+
+  document.getElementById("helpOverlay").onclick = () => {
+    document.getElementById("helpModal").style.display = "none";
+  };
+}
 
 // ---------------------- MAP -----------------------
 function setupMap() {
@@ -685,4 +705,3 @@ function updateStopwatchDisplay(routeNum, currentIndex) {
 
 </body>
 </html>
-
