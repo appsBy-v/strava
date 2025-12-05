@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer4</title>
+<title>GPX Comparison Viewer5</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -100,7 +100,6 @@ input[type=range] {
 </head>
 
 <body>
-  <h1 style="color:red">THIS IS THE REAL FILE</h1>
 <!-- Upload UI -->
 <div id="topbar">
   <input type="file" id="file1" accept=".gpx">
@@ -138,6 +137,7 @@ input[type=range] {
 
 <script>
 window.addEventListener('load', () => {
+  console.log("BODY HTML:", document.body.innerHTML);
   if (window.__GPX_LOADED__) {
       console.warn("Script attempted to run twice — aborting second run.");
       return;
@@ -235,30 +235,27 @@ window.addEventListener('load', () => {
 
   // ---------------------- MAP -----------------------
   function setupMap() {
-    // If map already exists, wipe it
-    if (window.map) {
-      window.map.remove();
-      window.map = null;
-    }
-
-    const mapDiv = document.getElementById("map");
-    if (!mapDiv) {
-      alert("Map container #map not found in DOM");
-      return;
-    }
-
-    // Use the actual element (not just the id string) to be explicit
-    window.map = L.map(mapDiv).setView(coords1[0], 13);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:19
-    }).addTo(window.map);
-
-    L.polyline(coords1, {color:'blue', weight:3}).addTo(window.map);
-    L.polyline(coords2, {color:'red', weight:3}).addTo(window.map);
-
-    marker1 = L.marker(coords1[0], {icon:makeIcon('blue')}).addTo(window.map);
-    marker2 = L.marker(coords2[0], {icon:makeIcon('red')}).addTo(window.map);
+      if (window.map) {
+          window.map.remove();
+      }
+  
+      const mapDiv = document.getElementById("map");
+      if (!mapDiv) {
+          alert("Map container #map not found in DOM");
+          return;
+      }
+  
+      window.map = L.map(mapDiv).setView(coords1[0], 13);
+  
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom:19
+      }).addTo(window.map);
+  
+      L.polyline(coords1, {color:'blue', weight:3}).addTo(window.map);
+      L.polyline(coords2, {color:'red', weight:3}).addTo(window.map);
+  
+      marker1 = L.marker(coords1[0], {icon:makeIcon('blue')}).addTo(window.map);
+      marker2 = L.marker(coords2[0], {icon:makeIcon('red')}).addTo(window.map);
   }
 
   function makeIcon(color){
@@ -418,5 +415,6 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
 
 
