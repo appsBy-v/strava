@@ -195,7 +195,9 @@ window.onload = () => {
   function setupMap() {
     // If map already exists, wipe it
     if (window.map) map.remove();
-
+    let mapDiv = document.getElementById("map");
+    console.log("MAP SIZE:", mapDiv.offsetWidth, mapDiv.offsetHeight);
+    
     window.map = L.map('map').setView(coords1[0], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
 
@@ -356,6 +358,7 @@ window.onload = () => {
 
 </body>
 </html>
+
 
 
 
