@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer1</title>
+<title>GPX Comparison Viewer2</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -12,11 +12,29 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { margin:0; font-family:sans-serif; overflow:hidden; background:#f4f4f4; }
-#map { height:60vh; width:100%; }
+body {
+  margin:0;
+  font-family:sans-serif;
+  overflow:hidden;
+  background:#f4f4f4;
+}
 
+/* Map area */
+#map {
+  height:60vh;
+  width:100%;
+  display:block;
+}
+
+/* Wrapper for map + controls (optional but tidy) */
+#viewer {
+  width:100%;
+  display:block;
+}
+
+/* Top upload bar */
 #topbar {
-  padding: 8px;
+  padding:8px;
   background:white;
   box-shadow:0 2px 8px rgba(0,0,0,0.2);
   display:flex;
@@ -24,6 +42,7 @@ body { margin:0; font-family:sans-serif; overflow:hidden; background:#f4f4f4; }
   align-items:center;
 }
 
+/* Bottom controls */
 #controls {
   position:fixed;
   bottom:0;
@@ -33,27 +52,38 @@ body { margin:0; font-family:sans-serif; overflow:hidden; background:#f4f4f4; }
   text-align:center;
   box-shadow:0 -2px 8px rgba(0,0,0,0.3);
 }
-#map {
-  height:60vh;
-  width:100%;
-  display:block;
+
+button {
+  margin:4px;
+  padding:5px 12px;
+  font-size:14px;
+  cursor:pointer;
 }
-button { margin:4px; padding:5px 12px; font-size:14px; cursor:pointer; }
 
 .route {
-  display:flex; align-items:center; justify-content:center;
-  gap:10px; margin:4px 0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin:4px 0;
 }
 
 .route-name {
-  width:220px; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;
-  text-align:right; font-weight:bold;
+  width:220px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  overflow:hidden;
+  text-align:right;
+  font-weight:bold;
 }
 
-input[type=file] { font-size:14px; }
+input[type=file] {
+  font-size:14px;
+}
 
 input[type=range] {
-  width:55%; vertical-align:middle;
+  width:55%;
+  vertical-align:middle;
 }
 
 .chart-container {
@@ -77,35 +107,37 @@ input[type=range] {
   <button id="loadBtn">Load GPX</button>
 </div>
 
-<div id="map"></div>
+<div id="viewer">
+  <div id="map"></div>
 
-<!-- Controls -->
-<div id="controls" style="display:none;">
-  <div style="margin-bottom:6px;">
-    <button id="playBoth">▶ Play Both</button>
-    <button class="speed" data-speed="1">×1</button>
-    <button class="speed" data-speed="2">×2</button>
-    <button class="speed" data-speed="4">×4</button>
-    <button class="speed" data-speed="8">×8</button>
-    <button class="speed" data-speed="12">×12</button>
-  </div>
+  <!-- Controls -->
+  <div id="controls" style="display:none;">
+    <div style="margin-bottom:6px;">
+      <button id="playBoth">▶ Play Both</button>
+      <button class="speed" data-speed="1">×1</button>
+      <button class="speed" data-speed="2">×2</button>
+      <button class="speed" data-speed="4">×4</button>
+      <button class="speed" data-speed="8">×8</button>
+      <button class="speed" data-speed="12">×12</button>
+    </div>
 
-  <div class="route">
-    <span id="name1" class="route-name" style="color:blue;"></span>
-    <input type="range" id="slider1" min="0" value="0">
-  </div>
-  <div class="chart-container"><canvas id="chart1"></canvas></div>
+    <div class="route">
+      <span id="name1" class="route-name" style="color:blue;"></span>
+      <input type="range" id="slider1" min="0" value="0">
+    </div>
+    <div class="chart-container"><canvas id="chart1"></canvas></div>
 
-  <div class="route">
-    <span id="name2" class="route-name" style="color:red;"></span>
-    <input type="range" id="slider2" min="0" value="0">
+    <div class="route">
+      <span id="name2" class="route-name" style="color:red;"></span>
+      <input type="range" id="slider2" min="0" value="0">
+    </div>
+    <div class="chart-container"><canvas id="chart2"></canvas></div>
   </div>
-  <div class="chart-container"><canvas id="chart2"></canvas></div>
 </div>
 
 <script>
-window.onload = () => {
-  console.log("ONLOAD FIRING, MAP DIV EXISTS?", document.getElementById("map"));
+window.addEventListener('load', () => {
+
   // ---------------------- FILE READING -----------------------
   function readFile(f) {
     return new Promise((resolve, reject) => {
@@ -120,21 +152,23 @@ window.onload = () => {
   function parseGPX(text) {
     const xml = new DOMParser().parseFromString(text, "text/xml");
     const pts = [];
-    const nodes = xml.getElementsByTagName("trkpt");
+    const nodes = xml.getElementsByTagName("trkpt"); // simple case; can swap to getElementsByTagNameNS if needed
 
     for (let n of nodes) {
-      let lat = parseFloat(n.getAttribute("lat"));
-      let lon = parseFloat(n.getAttribute("lon"));
+      const lat = parseFloat(n.getAttribute("lat"));
+      const lon = parseFloat(n.getAttribute("lon"));
 
-      let eleNode = n.getElementsByTagName("ele")[0];
-      let ele = eleNode ? parseFloat(eleNode.textContent) * 3.28084 : 0; // meters → feet
+      const eleNode = n.getElementsByTagName("ele")[0];
+      const ele = eleNode ? parseFloat(eleNode.textContent) * 3.28084 : 0; // meters → feet
 
-      let tNode = n.getElementsByTagName("time")[0];
+      const tNode = n.getElementsByTagName("time")[0];
       let time = "";
-      if (tNode) {
+      if (tNode && tNode.textContent) {
         let dt = new Date(tNode.textContent);
-        dt = new Date(dt.getTime() - 8 * 3600 * 1000); // Pacific shift
-        time = dt.toLocaleTimeString();
+        if (!isNaN(dt)) {
+          dt = new Date(dt.getTime() - 8 * 3600 * 1000); // Pacific shift
+          time = dt.toLocaleTimeString();
+        }
       }
 
       pts.push({ lat, lon, ele, time });
@@ -145,20 +179,21 @@ window.onload = () => {
   // --------------- MATH HELPERS -----------------
   function bounds(arr) {
     if (!arr.length) return [0, 1];
-    let mn = Math.min(...arr);
-    let mx = Math.max(...arr);
-    let rg = mx - mn || 1;
+    const mn = Math.min(...arr);
+    const mx = Math.max(...arr);
+    const rg = mx - mn || 1;
     return [mn - 0.05 * rg, mx + 0.05 * rg];
   }
 
-  // --------------- GLOBALS after load -----------------
-  let coords1, coords2, elev1, elev2, time1, time2;
-  let marker1, marker2, c1, c2;
+  // --------------- GLOBALS -----------------
+  let coords1 = [], coords2 = [], elev1 = [], elev2 = [], time1 = [], time2 = [];
+  let marker1 = null, marker2 = null, c1 = null, c2 = null;
   let speedMult = 1;
   let playing = false, timer = null;
 
   // ---------------------- MAIN LOAD -----------------------
-  document.getElementById("loadBtn").onclick = async () => {
+  const loadBtn = document.getElementById("loadBtn");
+  loadBtn.onclick = async () => {
     const f1 = document.getElementById("file1").files[0];
     const f2 = document.getElementById("file2").files[0];
     if (!f1 || !f2) {
@@ -190,22 +225,33 @@ window.onload = () => {
 
     document.getElementById("controls").style.display = "block";
   };
-  console.log("BEFORE setupMap — is map still here?", document.getElementById("map"));
+
   // ---------------------- MAP -----------------------
   function setupMap() {
     // If map already exists, wipe it
-    if (window.map) map.remove();
-    let mapDiv = document.getElementById("map");
-    console.log("MAP SIZE:", mapDiv.offsetWidth, mapDiv.offsetHeight);
-    
-    window.map = L.map('map').setView(coords1[0], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+    if (window.map) {
+      window.map.remove();
+      window.map = null;
+    }
 
-    L.polyline(coords1, {color:'blue', weight:3}).addTo(map);
-    L.polyline(coords2, {color:'red', weight:3}).addTo(map);
+    const mapDiv = document.getElementById("map");
+    if (!mapDiv) {
+      alert("Map container #map not found in DOM");
+      return;
+    }
 
-    marker1 = L.marker(coords1[0], {icon:makeIcon('blue')}).addTo(map);
-    marker2 = L.marker(coords2[0], {icon:makeIcon('red')}).addTo(map);
+    // Use the actual element (not just the id string) to be explicit
+    window.map = L.map(mapDiv).setView(coords1[0], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom:19
+    }).addTo(window.map);
+
+    L.polyline(coords1, {color:'blue', weight:3}).addTo(window.map);
+    L.polyline(coords2, {color:'red', weight:3}).addTo(window.map);
+
+    marker1 = L.marker(coords1[0], {icon:makeIcon('blue')}).addTo(window.map);
+    marker2 = L.marker(coords2[0], {icon:makeIcon('red')}).addTo(window.map);
   }
 
   function makeIcon(color){
@@ -214,7 +260,8 @@ window.onload = () => {
         `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'>
           <circle cx='12' cy='12' r='8' fill='${color}' stroke='black' stroke-width='1'/>
         </svg>`,
-      iconSize:[20,20],iconAnchor:[10,10]
+      iconSize:[20,20],
+      iconAnchor:[10,10]
     });
   }
 
@@ -228,7 +275,8 @@ window.onload = () => {
   }
 
   function makeChart(id, elev, time, color, ymin, ymax) {
-    return new Chart(document.getElementById(id).getContext('2d'), {
+    const ctx = document.getElementById(id).getContext('2d');
+    return new Chart(ctx, {
       type: 'line',
       data: {
         labels: elev.map((_,i)=>i),
@@ -276,13 +324,13 @@ window.onload = () => {
     s2.max = coords2.length - 1;
 
     s1.oninput = () => {
-      let i = +s1.value;
+      const i = +s1.value;
       marker1.setLatLng(coords1[i]);
       updateCursor(c1, i);
     };
 
     s2.oninput = () => {
-      let i = +s2.value;
+      const i = +s2.value;
       marker2.setLatLng(coords2[i]);
       updateCursor(c2, i);
     };
@@ -336,14 +384,18 @@ window.onload = () => {
         s1.value = i1;
         marker1.setLatLng(coords1[i1]);
         updateCursor(c1, i1);
-      } else done1 = true;
+      } else {
+        done1 = true;
+      }
 
       if (i2 < coords2.length - 1) {
         i2++;
         s2.value = i2;
         marker2.setLatLng(coords2[i2]);
         updateCursor(c2, i2);
-      } else done2 = true;
+      } else {
+        done2 = true;
+      }
 
       if (done1 && done2) {
         clearInterval(timer);
@@ -353,14 +405,9 @@ window.onload = () => {
 
     }, 100 / speedMult);
   }
-};
+
+});
 </script>
 
 </body>
 </html>
-
-
-
-
-
-
