@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer6</title>
+<title>GPX Comparison Viewer1</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -233,6 +233,7 @@ window.addEventListener("load", function() {
     document.getElementById("controls").style.display = "block";
   };
 
+  
   // ---------------------- MAP -----------------------
   function setupMap() {
       if (window.map) {
@@ -245,17 +246,24 @@ window.addEventListener("load", function() {
           return;
       }
   
-      window.map = L.map(mapDiv).setView(coords1[0], 13);
+      // Give browser time to render the map container properly
+      setTimeout(() => {
+          window.map = L.map(mapDiv).setView(coords1[0], 13);
   
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom:19
-      }).addTo(window.map);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom:19
+          }).addTo(window.map);
   
-      L.polyline(coords1, {color:'blue', weight:3}).addTo(window.map);
-      L.polyline(coords2, {color:'red', weight:3}).addTo(window.map);
+          L.polyline(coords1, {color:'blue', weight:3}).addTo(window.map);
+          L.polyline(coords2, {color:'red', weight:3}).addTo(window.map);
   
-      marker1 = L.marker(coords1[0], {icon:makeIcon('blue')}).addTo(window.map);
-      marker2 = L.marker(coords2[0], {icon:makeIcon('red')}).addTo(window.map);
+          marker1 = L.marker(coords1[0], {icon:makeIcon('blue')}).addTo(window.map);
+          marker2 = L.marker(coords2[0], {icon:makeIcon('red')}).addTo(window.map);
+          
+          // Fit bounds to show both routes
+          const allCoords = [...coords1, ...coords2];
+          window.map.fitBounds(allCoords);
+      }, 100);
   }
 
   function makeIcon(color){
@@ -415,6 +423,7 @@ window.addEventListener("load", function() {
 
 </body>
 </html>
+
 
 
 
