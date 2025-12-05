@@ -103,6 +103,67 @@ input[type=range] {
   display: inline-block;
   text-align: center;
 }
+
+/* Help Modal */
+#helpOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+}
+
+#helpContent {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 30px 40px;
+  border-radius: 8px;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+#helpContent h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+#helpContent ol {
+  text-align: left;
+  line-height: 1.8;
+  padding-left: 20px;
+}
+
+#helpContent ol li {
+  margin-bottom: 10px;
+}
+
+#closeHelp {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  line-height: 1;
+}
+
+#closeHelp:hover {
+  color: #333;
+}
+
 </style>
 </head>
 
@@ -112,6 +173,7 @@ input[type=range] {
   <input type="file" id="file1" accept=".gpx">
   <input type="file" id="file2" accept=".gpx">
   <button id="loadBtn">Load GPX</button>
+  <button id="helpBtn">How to Download GPX</button>
 </div>
 
 <div id="map"></div>
@@ -200,7 +262,7 @@ let marker1 = null, marker2 = null, c1 = null, c2 = null;
 let speedMult = 1;
 let playing = false, timer = null;
 let playing1 = false, playing2 = false, timer1 = null, timer2 = null;
-let stopwatch1Start = 0, stopwatch2Start = 0;
+let stopwatch1Start = null, stopwatch2Start = null; // null means not started
 let map = null;
 
 // ---------------------- MAIN LOAD -----------------------
@@ -238,6 +300,19 @@ loadBtn.onclick = async () => {
   setupMap();
   setupCharts();
   setupSliders();
+};
+
+// ---------------------- HELP MODAL -----------------------
+document.getElementById("helpBtn").onclick = () => {
+  document.getElementById("helpModal").style.display = "block";
+};
+
+document.getElementById("closeHelp").onclick = () => {
+  document.getElementById("helpModal").style.display = "none";
+};
+
+document.getElementById("helpOverlay").onclick = () => {
+  document.getElementById("helpModal").style.display = "none";
 };
 
 // ---------------------- MAP -----------------------
@@ -394,7 +469,7 @@ function setupSliders() {
     const i = +s1.value;
     marker1.setLatLng(coords1[i]);
     updateCursor(c1, i);
-    if (!playing1) {
+    if (stopwatch1Start !== null && !playing1) {
       updateStopwatchDisplay(1, i);
     }
   };
@@ -403,7 +478,7 @@ function setupSliders() {
     const i = +s2.value;
     marker2.setLatLng(coords2[i]);
     updateCursor(c2, i);
-    if (!playing2) {
+    if (stopwatch2Start !== null && !playing2) {
       updateStopwatchDisplay(2, i);
     }
   };
@@ -594,7 +669,8 @@ function updateStopwatchDisplay(routeNum, currentIndex) {
   const timestamps = routeNum === 1 ? timestamps1 : timestamps2;
   const startIndex = routeNum === 1 ? stopwatch1Start : stopwatch2Start;
   
-  if (!timestamps[startIndex] || !timestamps[currentIndex]) {
+  // If stopwatch hasn't been started, show 00:00
+  if (startIndex === null || !timestamps[startIndex] || !timestamps[currentIndex]) {
     document.getElementById(`stopwatch${routeNum}`).textContent = "00:00";
     return;
   }
