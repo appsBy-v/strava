@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer1</title>
+<title>GPX Comparison Viewer</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -480,7 +480,7 @@ function makeChart(id, elev, time, color, ymin, ymax) {
     },
     plugins: [persistentMarker]
   });
-}
+}}
 
 function updateCursor(chart, idx){
   chart.config.plugins[0].currentIndex = idx;
