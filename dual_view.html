@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>GPX Comparison Viewer</title>
+<title>GPX Comparison Viewer2</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -19,14 +19,12 @@ body {
   background:#f4f4f4;
 }
 
-/* Map area */
 #map {
   height:60vh;
   width:100%;
   display:block;
 }
 
-/* Top upload bar */
 #topbar {
   padding:8px;
   background:white;
@@ -36,7 +34,6 @@ body {
   align-items:center;
 }
 
-/* Bottom controls */
 #controls {
   position:fixed;
   bottom:0;
@@ -104,7 +101,6 @@ input[type=range] {
   text-align: center;
 }
 
-/* Help Modal */
 #helpOverlay {
   position: fixed;
   top: 0;
@@ -163,12 +159,10 @@ input[type=range] {
 #closeHelp:hover {
   color: #333;
 }
-
 </style>
 </head>
 
 <body>
-<!-- Upload UI -->
 <div id="topbar">
   <input type="file" id="file1" accept=".gpx">
   <input type="file" id="file2" accept=".gpx">
@@ -178,7 +172,6 @@ input[type=range] {
 
 <div id="map"></div>
 
-<!-- Controls -->
 <div id="controls" style="display:none;">
   <div style="margin-bottom:6px;">
     <button id="playBoth">▶ Play Both</button>
@@ -206,18 +199,38 @@ input[type=range] {
   <div class="chart-container"><canvas id="chart2"></canvas></div>
 </div>
 
+<div id="helpModal" style="display:none;">
+  <div id="helpOverlay"></div>
+  <div id="helpContent">
+    <button id="closeHelp">✕</button>
+    <h2>How to Download GPX Files from Strava</h2>
+    <ol>
+      <li>Open your Strava account and navigate to the activity you wish to compare</li>
+      <li>Scroll down to the map section of the activity</li>
+      <li>In the top right of the map, there's a button with a download arrow that says "GPX" - press that button</li>
+      <li>Save 2 different activities to your computer and use the input forms on this site to upload them</li>
+    </ol>
+    <img src="GPXDownload.png" alt="GPX Download Button Location" style="max-width:100%; margin:20px 0; border:2px solid #ddd;">
+    <p style="margin-top:20px; font-style:italic; color:#666;">
+      <strong>Note:</strong> We do not collect or save your GPX data. All processing happens locally in your browser.
+    </p>
+  </div>
+</div>
+
 <script>
 window.addEventListener("load", function() {
-  console.log("CHECK:", document.body.children.length);
-  if (window.__GPX_LOADED__) {
-      console.warn("Script attempted to run twice — aborting second run.");
-      return;
-  }
-  window.__GPX_LOADED__ = true;
-  
-  console.log("SCRIPT EXECUTED");
 
-// ---------------------- FILE READING -----------------------
+// Globals
+let coords1 = [], coords2 = [], elev1 = [], elev2 = [], time1 = [], time2 = [];
+let timestamps1 = [], timestamps2 = [];
+let marker1 = null, marker2 = null, c1 = null, c2 = null;
+let speedMult = 1;
+let playing = false, timer = null;
+let playing1 = false, playing2 = false, timer1 = null, timer2 = null;
+let stopwatch1Start = null, stopwatch2Start = null;
+let map = null;
+
+// File reading
 function readFile(f) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -227,7 +240,7 @@ function readFile(f) {
   });
 }
 
-// --------------------- GPX PARSER --------------------------
+// GPX Parser
 function parseGPX(text) {
   const xml = new DOMParser().parseFromString(text, "text/xml");
   const pts = [];
@@ -256,7 +269,7 @@ function parseGPX(text) {
   return pts;
 }
 
-// --------------- MATH HELPERS -----------------
+// Math helpers
 function bounds(arr) {
   if (!arr.length) return [0, 1];
   const mn = Math.min(...arr);
@@ -265,17 +278,7 @@ function bounds(arr) {
   return [mn - 0.05 * rg, mx + 0.05 * rg];
 }
 
-// --------------- GLOBALS -----------------
-let coords1 = [], coords2 = [], elev1 = [], elev2 = [], time1 = [], time2 = [];
-let timestamps1 = [], timestamps2 = []; // Raw Date objects
-let marker1 = null, marker2 = null, c1 = null, c2 = null;
-let speedMult = 1;
-let playing = false, timer = null;
-let playing1 = false, playing2 = false, timer1 = null, timer2 = null;
-let stopwatch1Start = null, stopwatch2Start = null; // null means not started
-let map = null;
-
-// ---------------------- MAIN LOAD -----------------------
+// Main load
 const loadBtn = document.getElementById("loadBtn");
 loadBtn.onclick = async () => {
   const f1 = document.getElementById("file1").files[0];
@@ -312,40 +315,7 @@ loadBtn.onclick = async () => {
   setupSliders();
 };
 
-// ---------------------- HELP MODAL -----------------------
-const helpBtn = document.getElementById("helpBtn");
-const helpModal = document.getElementById("helpModal");
-const closeHelp = document.getElementById("closeHelp");
-const helpOverlay = document.getElementById("helpOverlay");
-
-helpBtn.onclick = () => {
-  helpModal.style.display = "block";
-};
-
-closeHelp.onclick = () => {
-  helpModal.style.display = "none";
-};
-
-helpOverlay.onclick = () => {
-  helpModal.style.display = "none";
-};
-
-// ---------------------- HELP MODAL -----------------------
-function setupHelpModal() {
-  document.getElementById("helpBtn").onclick = () => {
-    document.getElementById("helpModal").style.display = "block";
-  };
-
-  document.getElementById("closeHelp").onclick = () => {
-    document.getElementById("helpModal").style.display = "none";
-  };
-
-  document.getElementById("helpOverlay").onclick = () => {
-    document.getElementById("helpModal").style.display = "none";
-  };
-}
-
-// ---------------------- MAP -----------------------
+// Map setup
 function setupMap() {
   if (map) {
     map.remove();
@@ -370,9 +340,9 @@ function setupMap() {
   }, 100);
 }
 
-function makeIcon(color){
+function makeIcon(color) {
   return L.icon({
-    iconUrl:"data:image/svg+xml;utf8,"+
+    iconUrl:"data:image/svg+xml;utf8," +
       `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'>
         <circle cx='12' cy='12' r='8' fill='${color}' stroke='black' stroke-width='1'/>
       </svg>`,
@@ -381,7 +351,7 @@ function makeIcon(color){
   });
 }
 
-// ---------------------- CHARTS -----------------------
+// Charts
 function setupCharts() {
   const [y1mn, y1mx] = bounds(elev1);
   const [y2mn, y2mx] = bounds(elev2);
@@ -407,7 +377,6 @@ function makeChart(id, elev, time, color, ymin, ymax) {
         const xPos = x.getPixelForValue(idx);
         const yPos = y.getPixelForValue(elev[idx]);
         
-        // Draw vertical line
         ctx.save();
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
@@ -418,7 +387,6 @@ function makeChart(id, elev, time, color, ymin, ymax) {
         ctx.stroke();
         ctx.setLineDash([]);
         
-        // Draw circle at point
         ctx.fillStyle = color;
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 2;
@@ -427,7 +395,6 @@ function makeChart(id, elev, time, color, ymin, ymax) {
         ctx.fill();
         ctx.stroke();
         
-        // Draw label box
         const label = `${elev[idx].toFixed(0)} ft | ${time[idx]}`;
         ctx.font = '12px sans-serif';
         const textWidth = ctx.measureText(label).width;
@@ -480,14 +447,14 @@ function makeChart(id, elev, time, color, ymin, ymax) {
     },
     plugins: [persistentMarker]
   });
-}}
+}
 
-function updateCursor(chart, idx){
+function updateCursor(chart, idx) {
   chart.config.plugins[0].currentIndex = idx;
   chart.update();
 }
 
-// ---------------------- SLIDERS -----------------------
+// Sliders
 function setupSliders() {
   const s1 = document.getElementById("slider1");
   const s2 = document.getElementById("slider2");
@@ -517,7 +484,7 @@ function setupSliders() {
   setupIndividualPlayback();
 }
 
-// ---------------------- PLAYBACK -----------------------
+// Playback
 function setupPlayback() {
   const playBtn = document.getElementById("playBoth");
 
@@ -527,7 +494,6 @@ function setupPlayback() {
       playBtn.textContent = "▶ Play Both";
       clearInterval(timer);
     } else {
-      // Stop individual playbacks
       if (playing1) {
         playing1 = false;
         clearInterval(timer1);
@@ -566,7 +532,6 @@ function setupPlayback() {
     };
   });
 }
-}
 
 function startPlayback() {
   const s1 = document.getElementById("slider1");
@@ -576,7 +541,6 @@ function startPlayback() {
   timer = setInterval(() => {
     let i1 = +s1.value;
     let i2 = +s2.value;
-
     let done1 = false, done2 = false;
 
     if (i1 < coords1.length - 1) {
@@ -602,11 +566,10 @@ function startPlayback() {
       playing = false;
       playBtn.textContent = "▶ Play Both";
     }
-
   }, 100 / speedMult);
 }
 
-// ---------------------- INDIVIDUAL PLAYBACK -----------------------
+// Individual playback
 function setupIndividualPlayback() {
   const play1Btn = document.getElementById("play1");
   const play2Btn = document.getElementById("play2");
@@ -617,7 +580,6 @@ function setupIndividualPlayback() {
       play1Btn.textContent = "▶";
       clearInterval(timer1);
     } else {
-      // Stop "Play Both" if active
       if (playing) {
         playing = false;
         clearInterval(timer);
@@ -638,7 +600,6 @@ function setupIndividualPlayback() {
       play2Btn.textContent = "▶";
       clearInterval(timer2);
     } else {
-      // Stop "Play Both" if active
       if (playing) {
         playing = false;
         clearInterval(timer);
@@ -688,7 +649,7 @@ function startIndividualPlayback(routeNum) {
   }
 }
 
-// ---------------------- STOPWATCH -----------------------
+// Stopwatch
 function formatTime(milliseconds) {
   const totalSeconds = Math.floor(milliseconds / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -700,7 +661,6 @@ function updateStopwatchDisplay(routeNum, currentIndex) {
   const timestamps = routeNum === 1 ? timestamps1 : timestamps2;
   const startIndex = routeNum === 1 ? stopwatch1Start : stopwatch2Start;
   
-  // If stopwatch hasn't been started, show 00:00
   if (startIndex === null || !timestamps[startIndex] || !timestamps[currentIndex]) {
     document.getElementById(`stopwatch${routeNum}`).textContent = "00:00";
     return;
@@ -712,6 +672,26 @@ function updateStopwatchDisplay(routeNum, currentIndex) {
   
   document.getElementById(`stopwatch${routeNum}`).textContent = formatTime(elapsed);
 }
+
+// Help modal
+const helpBtn = document.getElementById("helpBtn");
+const helpModal = document.getElementById("helpModal");
+const closeHelp = document.getElementById("closeHelp");
+const helpOverlay = document.getElementById("helpOverlay");
+
+helpBtn.onclick = () => {
+  helpModal.style.display = "block";
+};
+
+closeHelp.onclick = () => {
+  helpModal.style.display = "none";
+};
+
+helpOverlay.onclick = () => {
+  helpModal.style.display = "none";
+};
+
+}); // End window.load
 </script>
 
 </body>
